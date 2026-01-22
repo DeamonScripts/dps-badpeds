@@ -382,7 +382,7 @@ npcLocks[netId] = playerSource            -- Who has this NPC locked?
 
 ## Integration with dps-ainpcs
 
-Your **dps-ainpcs** script creates AI-powered NPCs with conversations, trust systems, and intel trading. These two scripts could complement each other:
+Try the **dps-ainpcs** script, it creates AI-powered NPCs with conversations, trust systems, and intel trading. These two scripts complement each other:
 
 ### Option 1: Keep Separate (Recommended)
 - **dps-badpeds**: For random street NPCs (any pedestrian)
@@ -490,3 +490,4 @@ Config.aiIntegration.enabled = false
 
 Free to use and modify for personal or server use.
 Redistribution or resale requires permission from the author.
+
