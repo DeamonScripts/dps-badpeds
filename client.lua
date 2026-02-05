@@ -4,6 +4,30 @@ local addedTargets = {}
 local activeScenes = {}
 local dispatchSentForNpc = {} -- Track which NPCs we've already dispatched for
 
+-- Helper: open an ox_lib context menu from qb-menu style items
+local function openMenu(id, title, menuItems)
+    local options = {}
+    for _, item in ipairs(menuItems) do
+        if not item.isMenuHeader then
+            local opt = {
+                title = item.header,
+                description = (item.txt and item.txt ~= "") and item.txt or nil,
+                icon = item.icon,
+            }
+            if item.params and item.params.event then
+                local evt = item.params.event
+                local args = item.params.args
+                opt.onSelect = function()
+                    TriggerEvent(evt, args)
+                end
+            end
+            table.insert(options, opt)
+        end
+    end
+    lib.registerContext({ id = id, title = title, options = options })
+    lib.showContext(id)
+end
+
 -- Get current location info for dispatch
 local function GetLocationInfo()
     local playerPed = PlayerPedId()
@@ -240,14 +264,16 @@ AddEventHandler('pedInteraction:approved', function(netId)
 
     PlayAmbientSpeech2(npc, "GENERIC_HI", "SPEECH_PARAMS_FORCE")
 
-        local menuItems = {
-        { header = "Police Menu", txt = "Interact with Pedestrians", isMenuHeader = true },
-        { header = "Check ID-card", txt = "Check the identity of the pedestrian", icon = "fa-solid fa-id-card", params = { event = "npc:showIdCard", args = { npc = npc } } },
-        { header = "Frisk the pedestrian", txt = "Check the pedestrian for illegal items", icon = "fas fa-search", params = { event = "npc:inventory", args = { npc = npc } } },
-        { header = "Close Menu", txt = "", params = { event = "npc:closeMenu", args = { npc = npc } } }
-    }
-
-    exports['qb-menu']:openMenu(menuItems)
+    lib.registerContext({
+        id = 'police_menu',
+        title = 'Police Menu',
+        options = {
+            { title = 'Check ID-card', description = 'Check the identity of the pedestrian', icon = 'fa-solid fa-id-card', onSelect = function() TriggerEvent('npc:showIdCard', { npc = npc }) end },
+            { title = 'Frisk the pedestrian', description = 'Check the pedestrian for illegal items', icon = 'fas fa-search', onSelect = function() TriggerEvent('npc:inventory', { npc = npc }) end },
+            { title = 'Close Menu', icon = 'fas fa-times', onSelect = function() TriggerEvent('npc:closeMenu', { npc = npc }) end },
+        }
+    })
+    lib.showContext('police_menu')
 end)
 
 RegisterNetEvent('npc:inventory')
@@ -284,7 +310,7 @@ AddEventHandler('addmenu', function(isIllegal, npcItems, netId)
             params = { event = "showmenu", args = { npc = npc } }
         })
     end
-    exports['qb-menu']:openMenu(npcItems)
+    openMenu('npc_inventory', 'Frisk Results', npcItems)
 end)
 
 RegisterNetEvent('arrestmenu')
@@ -295,14 +321,16 @@ AddEventHandler('arrestmenu', function(data)
 
     StopPedScene(netId)
 
-    local menuItems = {
-        { header = "Police Menu", txt = "Contraband found - Choose action", isMenuHeader = true },
-        { header = "Frisk Again", txt = "Search the pedestrian for more items", icon = "fas fa-search", params = { event = "npc:inventory", args = { npc = npc } } },
-        { header = "Negotiate Intel", txt = "See if suspect will talk for a deal", icon = "fas fa-comments", params = { event = "npc:requestIntel", args = { npc = npc } } },
-        { header = "Arrest", txt = "Arrest the pedestrian (full charges)", icon = "fa-solid fa-handcuffs", params = { event = "npc:arrest", args = { npc = npc } } },
-    }
-
-    exports['qb-menu']:openMenu(menuItems)
+    lib.registerContext({
+        id = 'arrest_menu',
+        title = 'Contraband Found',
+        options = {
+            { title = 'Frisk Again', description = 'Search the pedestrian for more items', icon = 'fas fa-search', onSelect = function() TriggerEvent('npc:inventory', { npc = npc }) end },
+            { title = 'Negotiate Intel', description = 'See if suspect will talk for a deal', icon = 'fas fa-comments', onSelect = function() TriggerEvent('npc:requestIntel', { npc = npc }) end },
+            { title = 'Arrest', description = 'Arrest the pedestrian (full charges)', icon = 'fa-solid fa-handcuffs', onSelect = function() TriggerEvent('npc:arrest', { npc = npc }) end },
+        }
+    })
+    lib.showContext('arrest_menu')
 end)
 
 RegisterNetEvent('npc:showIdCard')
@@ -619,19 +647,17 @@ AddEventHandler('npc:intelOfferResponse', function(netId, hasIntel, intelType, i
 
         QBCore.Functions.Notify(dialogues[math.random(#dialogues)], 'primary', 4000)
 
-        local menuItems = {
-            { header = "Intel Negotiation", txt = npcName.firstname .. " " .. npcName.lastname .. " has information", isMenuHeader = true },
-            { header = "Hear Intel", txt = "Listen to what they know", icon = "fas fa-ear-listen",
-              params = { event = "npc:hearIntel", args = { netId = netId } } },
-            { header = "Accept Deal", txt = "Record intel, reduce sentence", icon = "fas fa-handshake",
-              params = { event = "npc:acceptIntel", args = { netId = netId } } },
-            { header = "Reject & Arrest", txt = "No deals, full charges", icon = "fas fa-gavel",
-              params = { event = "npc:arrest", args = { npc = npc } } },
-            { header = "Offer Informant Deal", txt = "Recruit as long-term informant", icon = "fas fa-user-secret",
-              params = { event = "npc:offerInformant", args = { netId = netId } } },
-        }
-
-        exports['qb-menu']:openMenu(menuItems)
+        lib.registerContext({
+            id = 'intel_negotiation',
+            title = 'Intel Negotiation',
+            options = {
+                { title = 'Hear Intel', description = 'Listen to what they know', icon = 'fas fa-ear-listen', onSelect = function() TriggerEvent('npc:hearIntel', { netId = netId }) end },
+                { title = 'Accept Deal', description = 'Record intel, reduce sentence', icon = 'fas fa-handshake', onSelect = function() TriggerEvent('npc:acceptIntel', { netId = netId }) end },
+                { title = 'Reject & Arrest', description = 'No deals, full charges', icon = 'fas fa-gavel', onSelect = function() TriggerEvent('npc:arrest', { npc = npc }) end },
+                { title = 'Offer Informant Deal', description = 'Recruit as long-term informant', icon = 'fas fa-user-secret', onSelect = function() TriggerEvent('npc:offerInformant', { netId = netId }) end },
+            }
+        })
+        lib.showContext('intel_negotiation')
     else
         -- NPC has no useful intel
         local noInfoDialogues = {
@@ -666,17 +692,17 @@ AddEventHandler('npc:hearIntel', function(data)
     Wait(2000)
 
     local npc = NetworkGetEntityFromNetworkId(data.netId)
-    local menuItems = {
-        { header = "Intel Decision", txt = "What will you do with this information?", isMenuHeader = true },
-        { header = "Accept Deal", txt = "Record intel, reduce sentence", icon = "fas fa-handshake",
-          params = { event = "npc:acceptIntel", args = { netId = data.netId } } },
-        { header = "Reject & Arrest", txt = "No deals, full charges", icon = "fas fa-gavel",
-          params = { event = "npc:arrest", args = { npc = npc } } },
-        { header = "Offer Informant Deal", txt = "Recruit as long-term informant", icon = "fas fa-user-secret",
-          params = { event = "npc:offerInformant", args = { netId = data.netId } } },
-    }
-
-    exports['qb-menu']:openMenu(menuItems)
+    local netId = data.netId
+    lib.registerContext({
+        id = 'intel_decision',
+        title = 'Intel Decision',
+        options = {
+            { title = 'Accept Deal', description = 'Record intel, reduce sentence', icon = 'fas fa-handshake', onSelect = function() TriggerEvent('npc:acceptIntel', { netId = netId }) end },
+            { title = 'Reject & Arrest', description = 'No deals, full charges', icon = 'fas fa-gavel', onSelect = function() TriggerEvent('npc:arrest', { npc = npc }) end },
+            { title = 'Offer Informant Deal', description = 'Recruit as long-term informant', icon = 'fas fa-user-secret', onSelect = function() TriggerEvent('npc:offerInformant', { netId = netId }) end },
+        }
+    })
+    lib.showContext('intel_decision')
 end)
 
 -- Accept intel deal
@@ -744,15 +770,15 @@ AddEventHandler('npc:informantResponse', function(netId, accepted, npcName, reas
     if accepted then
         QBCore.Functions.Notify(npcName.firstname .. ' agreed to become an informant!', 'success', 5000)
 
-        local menuItems = {
-            { header = "Informant Recruited", txt = npcName.firstname .. " " .. npcName.lastname .. " is now your CI", isMenuHeader = true },
-            { header = "Release (No Charges)", txt = "Let them go to maintain cover", icon = "fas fa-door-open",
-              params = { event = "npc:releaseInformant", args = { netId = netId } } },
-            { header = "Arrest Anyway", txt = "Book them despite cooperation", icon = "fas fa-gavel",
-              params = { event = "npc:arrest", args = { npc = npc } } },
-        }
-
-        exports['qb-menu']:openMenu(menuItems)
+        lib.registerContext({
+            id = 'informant_recruited',
+            title = 'Informant Recruited',
+            options = {
+                { title = 'Release (No Charges)', description = 'Let them go to maintain cover', icon = 'fas fa-door-open', onSelect = function() TriggerEvent('npc:releaseInformant', { netId = netId }) end },
+                { title = 'Arrest Anyway', description = 'Book them despite cooperation', icon = 'fas fa-gavel', onSelect = function() TriggerEvent('npc:arrest', { npc = npc }) end },
+            }
+        })
+        lib.showContext('informant_recruited')
     else
         if reason == 'already_informant' then
             QBCore.Functions.Notify(npcName.firstname .. ' is already a registered informant', 'error')

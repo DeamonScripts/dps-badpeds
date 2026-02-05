@@ -1,6 +1,6 @@
 Config = {}
 
-Config.target = 'qb-target' -- Options: 'qb-target', 'ox-target'
+Config.target = 'ox-target' -- Options: 'qb-target', 'ox-target'
 Config.inventory = 'qs-inventory' -- Options: 'qb-inventory', 'qs-inventory', 'ox_inventory'
 
 -- ============================================================================

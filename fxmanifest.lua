@@ -6,11 +6,12 @@ description 'Police NPC Interaction System with Intel Trading and Jail System'
 version    '2.0.0'
 
 -- Dependencies
--- Required: qb-core, qb-menu, qb-target or ox_target
+-- Required: qb-core, ox_lib, qb-target or ox_target
 -- Optional: oxmysql (for jail system), dps-ainpcs (for AI dialogue)
 -- Run sql/jail_records.sql if using the jail system
 
 shared_scripts {
+    '@ox_lib/init.lua',
     'shared/characters.lua', -- Shared character pool (can be used by dps-ainpcs)
     'config.lua'
 }
@@ -30,7 +31,7 @@ files {
 
 dependencies {
     'qb-core',
-    'qb-menu'
+    'ox_lib'
 }
 
 
